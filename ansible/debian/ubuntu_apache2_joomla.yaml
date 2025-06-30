@@ -1,0 +1,83 @@
+---
+- name: Ubuntu24.04 Joomla setup
+  hosts: all
+  tasks:
+    - name: Install Apache2 (Ubuntu24.04)
+      ansible.builtin.apt:
+        name:
+          - apache2
+          - mariadb-server
+          - unzip
+
+    # joomla를 사용하기 위한 사용자 계정 생성
+    - name: Useradd joomla
+      ansible.builtin.user:
+        name: joomla
+        state: present
+        create_home: yes
+
+    # joomla계정에 public_html 파일 생성
+    - name: Create Public_html Directory
+      ansible.builtin.file:
+        path: /home/joomla/public_html
+        state: directory
+        mode: '0755'
+
+    # joomla 다운로드
+    - name: Download Joomla zip
+      ansible.builtin.get_url:
+        url: "https://downloads.joomla.org/cms/joomla5/5-3-0/Joomla_5-3-0-Stable-Full_Package.zip?format=zip"
+        dest: /home/joomla/public_html/Joomla_5-3-0.zip
+        mode: '0755'
+
+    # 다운로드 받은 파일 압축 해제
+    - name: Unzip Joomla zip file
+      ansible.builtin.unarchive:
+        src: /home/joomla/public_html/Joomla_5-3-0.zip
+        dest: /home/joomla/public_html
+        remote_src: yes
+
+    # 다운로드 후 받은 파일 삭제
+    - name: Remove 'Joomla_5-3-0-Stable-Full_Package.zip?format=zip'
+      ansible.builtin.file:
+        path: /home/joomla/public_html/Joomla_5-3-0.zip
+        state: absent
+
+    - name: Change Modify Joomla Directory
+      ansible.builtin.command:
+        cmd: chmod -R 755 /home/joomla
+
+    - name: Change Owner Public_html Directory
+      ansible.builtin.file:
+        path: /home/joomla
+        owner: www-data
+        group: www-data
+        recurse: yes
+
+    #- name: VirtualHost Setting
+    #  ansible.builtin.blockinfile:
+    #    path: /etc/apache2/sites-available/000-default.conf
+    #    content: |
+    #      <VirtualHost *:80>
+    #          DocumentRoot "/home/joomla/"
+    #          # Servername joomla.smt.it
+    #          <Directory "/home/joomla/">
+    #              Options Indexes FollowSymLinks
+    #              AllowOverride All
+    #              Require all granted
+    #          </Directory>
+    #      </VirtualHost>
+
+    - name: VirtualHost Setting
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/000-default.conf
+        content: |
+          <VirtualHost *:80>
+              DocumentRoot "/home/joomla/public_html"
+              # Servername joomla.smt.it
+              <Directory "/home/joomla/public_html">
+                  Options Indexes FollowSymLinks
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+          </VirtualHost>

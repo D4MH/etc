@@ -1,0 +1,57 @@
+---
+- name: Make Database (pydio)
+  hosts: all
+  become: yes
+  gather_facts: yes
+  collections:
+    - community.mysql
+  vars:
+    db_name: cells
+    db_user: root
+    db_password: "asd123!@"
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Install PyMySQL on target host
+      ansible.builtin.apt:
+        name:
+          - python3-pymysql
+          - mariadb-server
+        state: present
+        update_cache: yes
+
+    # cells에 사용하기 위한 DB 생성
+    - name: Create MySQL DB
+      mysql_db:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: "asd123!@"
+
+    # cells의 사용자 권한 부여
+    - name: Create MySQL User and Grant Permissions
+      mysql_user:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        state: present
+        host: "%"
+        login_user: root
+        login_password: "asd123!@"
+
+    # MariaDB 서비스 재시작
+    - name: MariaDB Service Restart
+      ansible.builtin.systemd:
+        name: mariadb
+        state: restarted
+
+    #- name: NginX Service Stop
+    #  ansible.builtin.systemd:
+    #    name: NginX
+    #    state: stoped
+
+    - name: Apache2 Service Restart
+      ansible.builtin.systemd:
+        name: apache2
+        state: restarted

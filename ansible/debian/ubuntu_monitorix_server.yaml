@@ -1,0 +1,120 @@
+---
+- name: Ubuntu24.04 Monitorix setup
+  hosts: all
+  gather_facts: yes
+  vars_files:
+    - user.yaml
+  tasks:
+    - name: Install monitorix
+      ansible.builtin.apt:
+        name:
+          - monitorix
+          - nginx
+
+    # monitorix 파일 생성 및 수정
+    - name: Update monitorix file
+      ansible.builtin.copy:
+        dest: /etc/nginx/sites-available/monitorix
+        content: |
+          server {
+              listen 80;
+
+              server_name 172.16.3.244;
+
+              location /monitorix/ {
+                  proxy_pass http://172.16.3.244:8080/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              }
+
+              location /monitorix-cgi/ {
+                  proxy_pass http://172.16.3.244:8080/monitorix-cgi/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              }
+              
+              location / {
+                  proxy_pass http://172.16.3.244:8080/monitorix/;
+              }
+
+          }
+
+# monitorix.conf 파일에서 내용 변경
+- name: Replace <multihost> block in monitorix.conf
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Replace <multihost> block in monitorix.conf
+      ansible.builtin.replace:
+        path: /etc/monitorix/monitorix.conf
+        regexp: '(<multihost>)(.|\n)*?</multihost>'
+        replace: |
+          <multihost>
+                  enabled = y
+                  footer_url = y
+                  graphs_per_row = 2
+                  default_option_when_all = "System load"
+                  remotehost_list = test1, mosmt
+                  <remotehost_desc>
+                          0 = http://172.16.3.244:8080,/monitorix
+                          1 = http://ns.smt.local/monitorix
+                          1 = http://bak.smt.local/monitorix
+                  </remotehost_desc>
+                  groups = n
+                  remotegroup_list = My Group
+                  <remotegroup_desc>
+                          0 = server 2, server 3
+                  </remotegroup_desc>
+          </multihost>
+      notify: Restart monitorix
+
+  handlers:
+    - name: Restart monitorix
+      ansible.builtin.systemd:
+        name: monitorix
+        state: restarted
+
+
+
+    #- name: Monitorix setting (replace)
+    #  ansible.builtin.blockinfile:
+    #    path: /etc/monitorix/monitorix.conf
+    #    block: |
+    #      <multihost>
+    #              enabled = y
+    #              footer_url = y
+    #              graphs_per_row = 2
+    #              default_option_when_all = "System load"
+    #              remotehost_list = test1, mosmt
+    #              <remotehost_desc>
+    #                      0 = http://172.16.3.244:8080,/monitorix
+    #                      1 = http://ns.smt.local/monitorix
+    #                      1 = http://bak.smt.local/monitorix
+    #              </remotehost_desc>
+    #              groups = n
+    #              remotegroup_list = My Group
+    #              <remotegroup_desc>
+    #                      0 = server 2, server 3
+    #              </remotegroup_desc>
+    #      </multihost>
+
+    # monitorix 파일 심볼릭 링크 설정
+    - name: Symbolic Link Setting (only if not exists)
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/monitorix
+        dest: /etc/nginx/sites-enabled/monitorix
+        state: link
+
+    #- name: Apache2 Service Stop
+    #  ansible.builtin.systemd:
+    #    name: apache2
+    #    state: stopped
+
+    # NginX 재시작
+    - name: NginX Service Start
+      ansible.builtin.systemd:
+        name: nginx
+        state: started

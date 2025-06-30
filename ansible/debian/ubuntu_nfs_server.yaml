@@ -1,0 +1,39 @@
+---
+- name: Ubuntu24.04 NFS setup (Server)
+  hosts: all
+  tasks:
+    - name: Install NFS Service
+      ansible.builtin.apt:
+        name:
+          - nfs-kernel-server
+        state: present
+
+    # NFS 서버에서 공유할 nfs 디렉토리 생성
+    - name: Make Directory (nfs)
+      ansible.builtin.file:
+        path: "/nfs"
+        state: directory
+        mode: '0755'
+
+    # exports 파일에 nfs에 대한 권한 추가
+    - name: Configure /etc/exports
+      ansible.builtin.copy:
+        dest: /etc/exports
+        content: |
+          /nfs *(rw,sync,no_root_squash)
+        owner: root
+        group: root
+        mode: '0644'
+
+    # 클라이언트에서 마운트를 할 수 있게 nfs-kernel-server를 시작
+    - name: Enable and start nfs-kernel-server
+      ansible.builtin.systemd:
+        name: nfs-kernel-server
+        enabled: true
+        state: started
+
+    # 서비스 재시작
+    - name: Restart NFS server service
+      ansible.builtin.systemd:
+        name: nfs-kernel-server
+        state: restarted

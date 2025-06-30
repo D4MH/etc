@@ -1,0 +1,50 @@
+---
+- name: Make Database Joomla
+  hosts: all
+  become: yes
+  collections:
+    - community.mysql
+  vars:
+    db_name: joomla
+    db_user: joomla
+    db_password: "asd123!@"
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Install PyMySQL on target host
+      ansible.builtin.apt:
+        name: python3-pymysql
+        state: present
+
+    # joomla를 사용하기 위한 DB 생성
+    - name: Create MySQL DB
+      mysql_db:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: "asd123!@"
+
+    # joomla에서 사용할 계정 joomla의 권한 설정
+    - name: Create MySQL User and Grant Permissions
+      mysql_user:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        state: present
+        host: "%"
+        login_user: root
+        login_password: "asd123!@"
+
+    # MariaDB와 Apache2 서비스 재시작
+    - name: MariaDB Service Restarted
+      ansible.builtin.systemd:
+        name: mariadb
+        state: restarted
+        enabled: true
+
+    - name: Apache2 Service restarted
+      ansible.builtin.systemd:
+        name: apache2
+        state: restarted
+        enabled: true

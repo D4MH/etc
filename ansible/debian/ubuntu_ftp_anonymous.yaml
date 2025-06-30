@@ -1,0 +1,24 @@
+---
+- name: Ubuntu24.04 FTP Serivce setup (anonymous)
+  hosts: all
+  tasks:
+    - name: Install vsftpd
+      ansible.builtin.apt:
+        name:
+          - vsftpd
+
+    # vsftpd 서비스에서 익명으로 사용하기 위해 yes로 변경
+    - name: Update vsftpd.conf (anonymous setting)
+      ansible.builtin.lineinfile:
+        path: /etc/vsfptd.conf
+        regexp: '^anonymous_enable=NO'
+        line: 'anonymous_enable=YES'
+        state: present
+        backrefs: yes
+        create: no
+
+    # vsftpd 서비스 재시작
+    - name: Restart FTP Service
+      ansible.builtin.systemd:
+        name: vsftpd
+        state: restarted

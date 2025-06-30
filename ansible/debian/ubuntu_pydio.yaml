@@ -1,0 +1,59 @@
+---
+- name: Webhard Source Build (pydio)
+  hosts: all
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        name:
+          - gcc
+          - make
+          - git
+          - golang-go
+
+    # WebHard로 사용할 디렉토리 생성
+    - name: Make Directory
+      ansible.builtin.file:
+        path: "/home/pydio"
+        state: directory
+        mode: '0755'
+
+    # Github에서 cells파일 clone
+    - name: Git Clone cells.git
+      ansible.builtin.git:
+        repo: https://github.com/pydio/cells.git
+        dest: '/home/pydio'
+        version: main
+        force: yes
+
+    # Source build를 하기 위해 make 명령 수행
+    - name: Source Build cells.git
+      ansible.builtin.shell: make dev
+      args:
+        chdir: /home/pydio
+        creates: /home/pydio/cells
+
+
+# make 과정이 끝났다면 노션에 있는 pydio 메뉴얼보고 실행할것
+# 실행 명령어 -> ./cells configure
+
+
+
+#- name: Cells Configure (pydio)
+#  hosts: ubuntu
+#  tasks:
+#    - name: Cells Setting (pydio)
+#      ansible.builtin.expect:
+#        command: ./cells configure --cli
+#        responses:
+#          "Database Connection Type:": "\r"
+#          "Database Hostname:": "\r"
+#          "Database Port:": "\r"
+#          "Database Name:": "\r"
+#          "Database User:": "\r"
+#          "Database Password.*:": "\r"
+#          "Do you wish to configure a MongoDB connection.*": "n\r"
+#          "Admin Login:": "\r"
+#          "Admin Password:": "asd123!@\r"
+#          "Confirm Password:": "asd123!@\r"
+#      args:
+#        chdir: /home/pydio

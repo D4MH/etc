@@ -1,0 +1,75 @@
+---
+- name: Ubuntu24.04 SMB setup (Server)
+  hosts: all
+  tasks:
+    - name: Install SMB Service
+      ansible.builtin.apt:
+        name:
+          - cifs-utils
+          - samba
+          - python3
+          - pip
+
+    - name: Install pexpect
+      ansible.builtin.command:
+        cmd: pip install pexpect
+
+    # SMB 서버에서 공유할 office 계정 생성
+    - name: Create SMB User Ubuntu24.04
+      ansible.builtin.user:
+        name: office
+        password: asd123!@
+        state: present
+        create_home: yes
+
+    # office 계정의 디렉토리 생성
+    - name: Make Directory SMB
+      ansible.builtin.file:
+        path: "/home/office"
+        state: directory
+        mode: '0755'
+
+    # office 디렉토리의 소유주를 office로 변경
+    - name: Change Owner office user
+      ansible.builtin.file:
+        paht: /home/office
+        owner: office
+        group: office
+        recurse: yes
+
+    # SMB 설정파일에서 smbonly 추가
+    - name: SMB smb.conf setting
+      ansible.builtin.blockinfile:
+        path: "/etc/samba/smb.conf"
+        block: |
+          # [share]
+          #         comment = SMT SERVER!!
+          #         path = /share
+          #         writable = yes
+          #         browsable = yes
+          #         write list = office
+          #         valid users = office
+
+          [smbonly]
+                  comment = smbonly!!!
+                  path = /home/office
+                  writable = yes
+                  browsable = yes
+                  write list = office
+                  valid users = office
+
+    # SMB 서버에서 office 계정을 등록
+    - name: SMB Useradd Ubuntu24.04 (Client add)
+      ansible.builtin.expect:
+        command: smbpasswd -a office
+        responses:
+          "New SMB password:": asd123!@
+          "Retype new SMB password:": asd123!@
+
+    # SMB 서비스 재시작
+    - name: SMB Service Restart
+      ansible.builtin.systemd:
+        name:
+          - smbd
+          - nmbd
+        state: restarted

@@ -1,0 +1,60 @@
+---
+- name: Ubuntu24.04 Monitorix setup
+  hosts: all
+  gather_facts: yes
+  vars_files:
+    - user.yaml
+  tasks:
+    - name: Install monitorix
+      ansible.builtin.apt:
+        name:
+          - monitorix
+          - nginx
+
+    # monitorix 파일 생성 및 수정
+    - name: Update monitorix file
+      ansible.builtin.copy:
+        dest: /etc/nginx/sites-available/monitorix
+        content: |
+          server {
+              listen 80;
+
+              server_name 172.16.3.244;
+
+              location /monitorix/ {
+                  proxy_pass http://172.16.3.244:8080/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              }
+
+              location /monitorix-cgi/ {
+                  proxy_pass http://172.16.3.244:8080/monitorix-cgi/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              }
+              
+              location / {
+                  proxy_pass http://172.16.3.244:8080;
+              }
+
+          }
+
+    # 생성한 monitorix 파일을 sites-enabled로 심볼릭 링크 설정
+    - name: Symbolic Link Setting (only if not exists)
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/monitorix
+        dest: /etc/nginx/sites-enabled/monitorix
+        state: link
+
+    #- name: Apache2 Service Stop
+    #  ansible.builtin.systemd:
+    #    name: apache2
+    #    state: stopped
+
+    # NginX 재시작
+    - name: NginX Service Start
+      ansible.builtin.systemd:
+        name: nginx
+        state: started

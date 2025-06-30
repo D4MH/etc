@@ -1,0 +1,30 @@
+---
+- name: Ubuntu24.04 Apache2 setup (Server)
+  hosts: all
+  vars_files:
+    - user.yaml
+  tasks:
+    - name: Install Apache2 (Ubuntu24.04)
+      ansible.builtin.apt:
+        name:
+          - apache2
+
+    - name: VirtualHost Setting
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/000-default.conf
+        content: |
+          <VirtualHost *:80>
+              DocumentRoot "/home/smt1/public_html"
+              # Servername wp.smt.it
+              <Directory "/home/smt1/public_html/wordpress">
+                  Options Indexes FollowSymLinks
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+          </VirtualHost>
+
+    # MariaDB와 Apache2 서비스 재시작
+    - name: Apache2 Service Restart
+      ansible.builtin.systemd:
+        name: apache2
+        state: restarted

@@ -1,0 +1,45 @@
+---
+- name: Ubuntu24.04 PHP setting
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Ensure apt cache is up-to-date
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install PHP and module
+      ansible.builtin.apt:
+        name:
+          - php
+          - php-cli
+          - php-common
+          - php-dev
+          - php-mbstring
+          - php-odbc
+          - php-gd
+          - php-mysql
+          - php-pear
+          - php-xml
+          - php-xmlrpc
+          - php-zip
+          - php-opcache
+          - php-fpm
+          - php-intl
+          - php-pdo
+          - php-bcmath
+        state: present
+
+    - name: Install PHP C Lib
+      ansible.builtin.apt:
+        name:
+          - libjpeg-dev
+          - libpng-dev
+          - libfreetype-dev
+          - libgd-dev
+          - build-essential
+          - libgdbm-dev
+          - libgif-dev
+          - zlib1g-dev
+          - libzip-dev
+        state: present

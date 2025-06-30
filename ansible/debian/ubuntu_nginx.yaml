@@ -1,0 +1,15 @@
+---
+- name: Ubuntu24.04 nginx setup
+  hosts: all
+  tasks:
+    - name: Install nginx (Ubuntu24.04)
+      ansible.builtin.apt:
+        name:
+          - nginx
+        state: present
+
+    - name: Nginx Service start
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: true

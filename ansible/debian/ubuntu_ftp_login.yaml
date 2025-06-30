@@ -1,0 +1,34 @@
+---
+- name: Ubuntu24.04 FTP Service setup (Login)
+  hosts: all
+  tasks:
+    - name: Install FTP Service
+      ansible.builtin.apt:
+        name:
+          - vsftpd
+          - openssh-server
+        update_cache: yes
+
+    # Login FTP 서비스를 사용하기 위해 ftpuserU 계정 생성
+    - name: vsftpd Useradd 'ftpuserU'
+      ansible.builtin.user:
+        name: ftpuserU
+        password: "{{ 'asd123!@' | password_hash('sha512', 'mysecret') }}"
+        create_home: yes
+        state: present
+
+    # vsftpd 설정파일에서 쓰기 권한 설정
+    - name: Update vsftpd.conf (write_enable)
+      ansible.builtin.lineinfile:
+        path: /etc/vsftpd.conf
+        regexp: '^#write_enable=YES'
+        line: 'write_enable=YES'
+        state: present
+        backrefs: yes
+        create: no
+
+    # vsftpd 서비스 재시작
+    - name: Restart FTP Service
+      ansible.builtin.systemd:
+        name: vsftpd
+        state: restarted

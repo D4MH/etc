@@ -1,0 +1,21 @@
+---
+- name: Ubuntu24.04 SMB setup (Client)
+  hosts: all
+  tasks:
+    - name: Install SMB Service (Client)
+      ansible.builtin.apt:
+        name:
+          - cifs-utils
+          - smbclient
+
+    # 서버에서 마운트 할 디렉토리 생성 smb_office
+    - name: Make Directory (SMB)
+      ansible.builtin.file:
+        path: "/home/smb_office"
+        state: directory
+        mode: '0755'
+
+    # 마운트
+    - name: SMB Mount (Server - Client)
+      ansible.builtin.command:
+        cmd: "mount -t cifs //IP/smbonly /home/smb_office -o username='office',password='asd123!@'"

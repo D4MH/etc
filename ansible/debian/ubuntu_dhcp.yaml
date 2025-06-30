@@ -1,0 +1,30 @@
+---
+- name: Ubuntu24.04 dhcp setup (Server)
+  hosts: all
+  tasks:
+    - name: Install dhcp server
+      ansible.builtin.apt:
+        name:
+          - isc-dhcp-server
+        state: present
+
+    # DHCP 서버 설정
+    - name: DHCP Server Setting
+      ansible.builtin.blockinfile:
+        path: /etc/dhcp/dhcpd.conf
+        block: |
+          subnet IP netmask SM {
+              range 11.88.0.3 11.88.255.254;
+              # option domain-name-servers 8.8.8.8;
+              # option domain-name "internal.example.org";
+              option subnet-mask 255.248.0.0;
+              option routers 11.88.0.1;
+              # option broadcast-address 10.5.5.31;
+          }
+
+    # DHCP 서비스 활성화
+    - name: DHCP Service Start
+      ansible.builtin.systemd:
+        name: isc-dhcp-server
+        state: started
+        enabled: true

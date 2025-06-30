@@ -1,0 +1,125 @@
+---
+- name: Ubuntu24.04 mrtg Service
+  hosts: all
+  tasks:
+    - name: Install mrtg Service
+      ansible.builtin.apt:
+        name:
+          - mrtg
+          - snmp
+          - nginx
+        state: present
+
+    # cfgmaker 수행
+    - name: cfgmaker setting
+      ansible.builtin.shell: cfgmaker --output=/etc/mrtg/mrtg.cfg snmpsmt@10.0.0.1
+      become: yes
+
+    # mrtg의 권한 변경
+    #- name: Change Owner mrtg
+    #  ansible.builtin.command:
+    #    cmd: "chown -R mrtg:mrtg /var/www/html/mrtg"
+    #    #cmd: "chown -R $(whoami):$(whoami) /var/www/html/mrtg"
+
+    # mrtg에 실행 권한 부여
+    - name: Execute mrtg
+      ansible.builtin.command:
+        cmd: chmod -R u+rwX /var/www/html/mrtg
+
+    # indexmaker로 index.html 생성
+    - name: indexmaker setting
+      ansible.builtin.shell: indexmaker /etc/mrtg/mrtg.cfg > /var/www/html/mrtg/index.html
+
+    # cmd에 있는 명령어 3번 수행
+    - name: Run mrtg command 3 times
+      ansible.builtin.command:
+        cmd: env LANG=C /usr/bin/mrtg /etc/mrtg/mrtg.cfg
+      loop:
+        - 1
+        - 2
+        - 3
+      loop_control:
+        loop_var: iteration
+
+    # mrtg의 u에 읽기, 쓰기, 실행권한 지급
+    - name: Change Permissions of mrtg
+      ansible.builtin.file:
+        path: /var/www/html/mrtg
+        recurse: yes
+        mode: u+rwX
+
+    # mrtg의 소유자를 www-data로 변경
+    - name: Change Permissions of /var/www/html/mrtg
+      ansible.builtin.command:
+        cmd: chown -R www-data:www-data /var/www/html/mrtg
+
+    # NginX 서비스 시작 및 활성화
+    - name: NginX Service Started
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: true
+
+    # NginX에서 mrtg 파일 생성
+    - name: Update NginX Service
+      ansible.builtin.copy:
+        dest: /etc/nginx/sites-available/mrtg
+        content: |
+          server {
+              listen 80;
+
+              server_name mrtg.smt.it;
+              root /var/www/html/mrtg;
+              index index.html;
+
+              location / {
+                  # First attempt to serve request as file, then
+                  # as directory, then fall back to displaying a 404.
+                  try_files $uri $uri/ =404;
+              }
+          }
+
+    # mrtg의 로그 파일을 crontab에 등록
+    - name: Create Crontab mrtg log file
+      ansible.builtin.cron:
+        name: "create mrtg log"
+        minute: "*/5"
+        job: "env LANG=C /usr/bin/mrtg /etc/mrtg/mrtg.cfg --logging /var/log/mrtg/mrtg.log"
+
+    # NginX 서비스 재시작
+    - name: NginX Service Restarted
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+        enabled: true
+
+    #- name: mrtg Service Restart
+    #  ansible.builtin.systemd:
+    #    name: apache2
+    #    state: restarted
+
+    #- name: VirtualHost Setting (mrtg)
+    #  ansible.builtin.copy:
+    #    dest: /etc/apache2/sites-available/000-default.conf
+    #    content: |
+    #      <VirtualHost *:80>
+    #          DocumentRoot "/var/www/html/mrtg"
+    #          Servername mrtg.smt.it
+    #          <Directory "/var/www/html/mrtg">
+    #              Options Indexes FollowSymLinks
+    #              AllowOverride All
+    #              Require all granted
+    #          </Directory>
+    #      </VirtualHost>
+
+    #- name: Target Setting (replace)
+    #  ansible.builtin.replace:
+    #    path: /etc/mrtg/mrtg.cfg
+    #    regexp: '#ens33:public@localhost:'
+    #    replace: '2:snmpsmt@localhost:'
+
+    #- name: mrtg Service Restart
+    #  ansible.builtin.systemd:
+    #    name: apache2
+    #    state: restarted
+    #    enabled: true

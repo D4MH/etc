@@ -1,0 +1,25 @@
+---
+- name: Ubuntu24.04 NFS setup (Client)
+  hosts: all
+  tasks:
+    - name: Install NFS (Client)
+      ansible.builtin.apt:
+        name:
+          - nfs-common
+        state: present
+        update_cache: yes
+    
+    # NFS 서버에 마운트
+    - name: Mount NFS Server
+      ansible.builtin.command:
+        cmd: "mount -t nfs 172.16.14.101:/nfs /home/smk"
+
+    - name: NFS-Common Service Restart
+      ansible.builtin.systemd:
+        name: nfs-common
+        state: started
+        enabled: true
+        
+    #- name: Mount ALL
+    #  ansible.builtin.command:
+    #    cmd: "mount -a"

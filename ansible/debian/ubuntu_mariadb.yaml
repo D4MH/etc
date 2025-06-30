@@ -1,0 +1,23 @@
+---
+- name: Ubuntu24.04 MariaDB setup
+  hosts: all
+  tasks:
+    - name: Install MariaDB
+      ansible.builtin.apt:
+        name:
+          - mariadb-server
+
+    - name: MariaDB Server Setting
+      ansible.builtin.lineinfile:
+        path: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: '^bind-address            = 127.0.0.1'
+        line: 'bind-address            = 0.0.0.0'
+        state: present
+        backrefs: yes
+        create: no
+
+    - name: MariaDB Service Restart
+      ansible.builtin.systemd:
+        name: mariadb
+        state: restarted
+        enabled: true

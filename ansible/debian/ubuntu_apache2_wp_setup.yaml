@@ -1,0 +1,81 @@
+---
+- name: Wordpress setup
+  hosts: all
+  gather_facts: yes
+  vars_files:
+    - user.yaml
+  tasks:
+    # WP를 사용하기 위한 계정 생성
+    - name: Wordpress useradd
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        state: present
+      loop: "{{ wordpress_users }}"
+      when: ansible_os_family == "Debian"
+
+    # WP를 다운받기 전에 해당 파일이 있는지 체크
+    - name: Wordpress checked
+      ansible.builtin.command:
+        cmd: "find /home/{{ item.username }}/ -name latest-ko_KR.zip"
+      register: wordpress_check
+      loop: "{{ wordpress_users }}"
+      ignore_errors: true
+      when: ansible_os_family == "Debian"
+
+    - name: Debug wordpress_check output
+      debug:
+        var: wordpress_check
+      when: ansible_os_family == "Debian"
+
+    # 위에서 체크 후 없다면 다운로드
+    - name: Download WordPress zip (smt N)
+      ansible.builtin.get_url:
+        url: "https://ko.wordpress.org/latest-ko_KR.zip"
+        dest: "/home/{{ item.username }}/latest-ko_KR.zip"
+      loop: "{{ wordpress_users }}"
+      when: ansible_os_family == "Debian"
+
+    # 생성한 사용자 디렉토리의 권한 변경
+    - name: Change Modify (public_html)
+      ansible.builtin.command:
+        cmd: "chmod -R 755 /home/{{ item.username }}"
+      loop: "{{ wordpress_users }}"
+      when: ansible_os_family == "Debian"
+      become: yes
+
+    # 다운로드 받은 WP 파일 압축 해제
+    - name: Unzip WordPress zip file
+      ansible.builtin.unarchive:
+        src: /home/{{ item.username }}/latest-ko_KR.zip
+        dest: /home/{{ item.username }}/
+        remote_src: yes
+      loop: "{{ wordpress_users }}"
+      when: ansible_os_family == "Debian"
+
+    - name: Change directory (Name -> public_html)
+      ansible.builtin.command:
+        cmd: "mv /home/{{ item.username }}/wordpress /home/{{ item.username }}/public_html"
+      loop: "{{ wordpress_users }}"
+      when: ansible_os_family == "Debian"
+
+    - name: Change Modify (public_html)
+      ansible.builtin.command:
+        cmd: "chmod -R 755 /home/{{ item.username }}/public_html/"
+      loop: "{{ wordpress_users }}"
+      when: ansible_os_family == "Debian"
+      become: yes
+
+    # 다운로드 받은 파일 삭제
+    - name: Remove latest-ko_KR.zip
+      ansible.builtin.file:
+        path: /home/{{ item.username }}/latest-ko_KR.zip
+        state: absent
+      loop: "{{ wordpress_users }}"
+      when: ansible_os_family == "Debian"
+
+    # wp-config.php 파일 생성
+    - name: Create wp-config.php file
+      ansible.builtin.command:
+        cmd: touch /home/{{ item.username }}/public_html/wordpress/wp-config.php
+      loop: "{{ wordpress_users }}"
+      when: ansible_os_family == "Debian"
