@@ -1,0 +1,77 @@
+---
+- name: Ubuntu 초기 세팅 자동화
+  hosts: ubun
+  become: yes
+  tasks:
+    - name: APT 전체 업데이트 & 업그레이드
+      apt:
+        upgrade: dist
+        update_cache: yes
+
+    - name: UFW 비활성화 및 중지
+      shell: |
+        ufw disable
+        systemctl stop ufw
+      ignore_errors: yes
+
+    - name: openssh-server 설치
+      apt:
+        name: openssh-server
+        state: present
+        update_cache: yes
+
+    - name: sshd_config에 PermitRootLogin yes로 설정
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin '
+        line: 'PermitRootLogin yes'
+        state: present
+
+    - name: ssh 서비스 활성화 및 재시작
+      systemd:
+        name: ssh
+        state: restarted
+        enabled: yes
+
+    - name: Apache2, MariaDB, wget, unzip, phpMyAdmin 설치
+      apt:
+        name:
+          - apache2
+          - mariadb-server
+          - mariadb-client
+          - wget
+          - unzip
+          - phpmyadmin
+        state: present
+        update_cache: yes
+
+    - name: PHP 8.2 및 주요 모듈 설치
+      apt:
+        name:
+          - php
+          - php-cli
+          - php-fpm
+          - php-mysql
+          - php-xml
+          - php-json
+          - php-common
+          - php-gd
+          - php-mbstring
+          - php-intl
+          - php-zip
+          - php-curl
+        state: present
+        update_cache: yes
+
+    - name: Apache2 서비스 활성화 및 재시작
+      systemd:
+        name: apache2
+        state: restarted
+        enabled: yes
+
+    - name: MariaDB 서비스 활성화 및 재시작
+      systemd:
+        name: mariadb
+        state: restarted
+        enabled: yes
+
