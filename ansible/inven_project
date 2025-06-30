@@ -1,0 +1,125 @@
+[ro_Core]
+CR1 ansible_host=6.0.0.1 ansible_user=d6
+CR2 ansible_host=6.0.0.2 ansible_user=d6
+CR3 ansible_host=6.0.0.3 ansible_user=d6
+DNSS1 ansible_host=6.32.0.10 ansible_user=d6
+
+[sw_Core]
+DNSS1 ansible_host=6.32.0.10 ansible_user=d6
+
+[ro_HQ]
+HQR1 ansible_host=6.64.0.2 ansible_user=d6
+HQR2 ansible_host=6.68.0.2 ansible_user=d6
+HQR3 ansible_host=6.76.0.2 ansible_user=d6
+
+[sw_HQ]
+HQS1 ansible_host=6.80.0.2 ansible_user=d6
+HQS2 ansible_host=6.84.0.2 ansible_user=d6
+HQS3 ansible_host=6.88.0.2 ansible_user=d6
+HQS4 ansible_host=6.104.0.10 ansible_user=d6
+HQS5 ansible_host=6.104.0.20 ansible_user=d6
+HQS6 ansible_host=6.112.0.10 ansible_user=d6
+HQS7 ansible_host=6.112.0.20 ansible_user=d6
+HQS8 ansible_host=6.112.0.30 ansible_user=d6
+HQS9 ansible_host=6.112.0.40 ansible_user=d6
+HQSA ansible_host=6.120.0.10 ansible_user=d6
+
+[ro_BO]
+BOR1 ansible_host=6.128.0.2 ansible_user=d6
+BOR2 ansible_host=6.136.0.2 ansible_user=d6
+
+[sw_BO]
+BOS1 ansible_host=6.144.0.10 ansible_user=d6
+BOS2 ansible_host=6.144.0.20 ansible_user=d6
+BOS3 ansible_host=6.144.0.30 ansible_user=d6
+BOS4 ansible_host=6.160.0.10 ansible_user=d6
+BOS5 ansible_host=6.168.0.10 ansible_user=d6
+
+[ro_PO1]
+PO1R1 ansible_host=7.0.0.2 ansible_user=d6
+PO1R2 ansible_host=7.16.0.2 ansible_user=d6
+PO1R3 ansible_host=7.16.0.3 ansible_user=d6
+
+[sw_PO1]
+PO1S1 ansible_host=7.32.0.2 ansible_user=d6
+PO1S2 ansible_host=7.48.0.2 ansible_user=d6
+PO1S3 ansible_host=7.96.0.10 ansible_user=d6
+PO1S4 ansible_host=7.96.0.20 ansible_user=d6
+PO1S5 ansible_host=7.96.0.30 ansible_user=d6
+
+[ro_PO2]
+PO2R1 ansible_host=7.128.0.2 ansible_user=d6
+PO2R2 ansible_host=7.136.0.2 ansible_user=d6
+PO2R3 ansible_host=7.136.0.3 ansible_user=d6
+
+[sw_PO2]
+PO2S1 ansible_host=7.144.0.10 ansible_user=d6
+PO2S2 ansible_host=7.144.0.20 ansible_user=d6
+PO2S3 ansible_host=7.144.0.30 ansible_user=d6
+PO2S4 ansible_host=7.176.0.2 ansible_user=d6
+PO2S5 ansible_host=7.184.0.2 ansible_user=d6
+PO2S6 ansible_host=7.208.0.10 ansible_user=d6
+
+[cisco_Dev:children]
+ro_Core
+ro_HQ
+ro_BO
+ro_PO1
+ro_PO2
+sw_Core
+sw_HQ
+sw_BO
+sw_PO1
+sw_PO2
+
+[ro_Core:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+[sw_Core:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+
+[ro_HQ:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+
+[sw_HQ:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+[ro_BO:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+[sw_BO:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+[ro_PO1:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+[sw_PO1:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+[ro_PO2:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
+
+[sw_PO2:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_pass=d6
