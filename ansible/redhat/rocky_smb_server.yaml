@@ -1,0 +1,81 @@
+---
+- name: Rocky9.5 SMB setup (Server)
+  hosts: all
+  tasks: 
+    - name: Install SMB Service
+      ansible.builtin.dnf:
+        name:
+          - cifs-utils
+          # - smb-client
+          - samba
+          - expect
+          - python3
+          - pip
+      
+    - name: Install pexpect
+      ansible.builtin.command:
+        cmd: pip install pexpect
+
+    # SMB 서버에서 공유할 office 계정 생성
+    - name: Create SMB User Rocky9.5
+      ansible.builtin.user:
+        name: office
+        password: asd123!@
+        state: present
+
+    # SMB 계정 생성 후 디랙토리 생성
+    - name: Make Directory SMB
+      ansible.builtin.file:
+        path: "/home/office"
+        state: directory
+        mode: '0750'
+
+    # 생성한 디렉토리의 권한을 office로 부여
+    - name: Change Owner office user
+      ansible.builtin.file:
+        path: /home/office
+        owner: office
+        group: office
+        recurse: yes
+
+    # SMB 설정파일에서 smbonly 타이틀 생성하고 경로 지정
+    - name: SMB setup Rocky9.5
+      ansible.builtin.blockinfile:
+        path: "/etc/samba/smb.conf"
+        block: |
+          # [share]
+          #         comment = SMT SERVER!!
+          #         path = /share
+          #         writable = yes
+          #         browsable = yes
+          #         write list = office
+          #         valid users = office
+
+          [office]
+                  comment = office_smbonly!!!
+                  path = /home/office
+                  writable = yes
+                  browsable = yes
+                  write list = office
+                  valid users = office
+
+    # SMB를 사용하기 위한 smbpasswd 명령으로 office계정 등록
+    - name: SMB Useradd Rocky9.5 (Client add)
+      ansible.builtin.expect:
+        command: smbpasswd -a office
+        responses:
+          "New SMB password:": asd123!@
+          "Retype new SMB password:": asd123!@
+
+    # SMB 서비스 재시작
+    - name: SMB smb Service Restart
+      ansible.builtin.systemd:
+        name: smb
+        state: restarted
+        enabled: true
+
+    - name: SMB nmb Service Restart
+      ansible.builtin.systemd:
+        name: nmb
+        state: restarted
+        enabled: true

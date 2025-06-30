@@ -1,0 +1,16 @@
+---
+- name: Rocky9.5 nginx setup
+  hosts: all
+  tasks:
+    - name: Install nginx (Rocky9.5)
+      ansible.builtin.dnf:
+        name:
+          - nginx
+        state: present
+
+    # NginX 서비스 시작
+    - name: Nginx Service start
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: true

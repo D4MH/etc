@@ -1,0 +1,32 @@
+---
+- name: Rocky9.5 DHCP service setup
+  host: all
+  gather_facts: yes
+  vars_files:
+    - rocky_user.yaml
+  tasks:
+    - name: Install DHCP Server
+      ansible.builtin.dnf:
+        name:
+          - epel-release
+          - dhcp-server
+        state: latest
+
+    # DHCP 설정파일에서 ip 입력
+    - name: DHCP Server Setting
+      ansible.builtin.blockinfile:
+      path: /etc/dhcp/dhcpd.conf
+      block: |
+        subnet 192.168.12.0 netmask 255.255.255.0 {
+          range 192.168.12.10 192.168.12.254;
+          option domain-name-servers 8.8.8.8;
+          option domain-name "internal.example.org";
+          option routers 192.168.12.1;
+        }
+
+    # DHCP 서비스 시작
+    - name: DHCP Service Started
+      ansible.builtin.systemd:
+        name: dhcpd
+        state: Started
+        enabled: true

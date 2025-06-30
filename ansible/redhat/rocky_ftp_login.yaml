@@ -1,0 +1,21 @@
+---
+- name: Rocky9.5 FTP Service setup (Login)
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Install FTP Service
+      ansible.builtin.dnf:
+        name:
+          - vsftpd
+
+    # Login FTP를 사용하기 위해 사용자 계정 추가
+    - name: vsftpd Useradd ftpuser
+      ansible.builtin.user:
+        name: ftpuserR
+        state: present
+    
+    # vsftpd 서비스 재시작
+    - name: Restart FTP Service
+      ansible.builtin.systemd:
+        name: vsftpd
+        state: restarted

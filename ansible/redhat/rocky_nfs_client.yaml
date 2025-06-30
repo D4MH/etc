@@ -1,0 +1,27 @@
+---
+- name: Rocky9.5 nfs setup (Client)
+  hosts: all
+  vars_files:
+  - user.yaml
+  tasks:
+    - name: Install NFS (Rocky9.5)
+      ansible.builtin.dnf:
+        name:
+          - nfs-utils
+        state: present
+
+    # NFS 서버에 마운트 하기 위한 디렉토리 생성
+    - name: Make Directory (mount)
+      ansible.builtin.file:
+        path: /nfs/nfs_share
+        state: directory
+        mode: '0755'
+
+    # NFS 서버에 마운트
+    - name: Mount nfs_share
+      ansible.posix.mount:
+        src: "{{ mount_ip }}:/nfs/nfs_share"
+        path: "/nfs/nfs_share"
+        fstype: "nfs"
+        opts: "defaults"
+        state: "mounted"

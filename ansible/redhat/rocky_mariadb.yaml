@@ -1,0 +1,17 @@
+---
+- name: Rocky9.5 MariaDB setup
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Install MariaDB (Rocky9.5)
+      ansible.builtin.dnf:
+        name:
+          - mariadb-server
+          - mariadb
+        state: present
+
+    # MariaDB 재시작
+    - name: Restart maraidb-server
+      ansible.builtin.systemd:
+        name: mariadb
+        state: restarted

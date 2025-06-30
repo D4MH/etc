@@ -1,0 +1,21 @@
+---
+- name: Rocky9.5 FTP Service setup (Anonymous Login)
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Install FTP service
+      ansible.builtin.dnf:
+        name:
+          - vsftpd
+    
+    # vsftpd 설정파일에서 익명 설정 yes로 변경
+    - name: vsftpd.conf setting (Anonymous)
+      ansible.builtin.command: >
+        sed -i 's/^anonymous_enable=NO/anonymous_enable=YES/' /etc/vsftpd/vsftpd.conf
+
+    # vsftpd 서비스 재시작
+    - name: Restart Named Service
+      ansible.builtin.systemd:
+        name: vsftpd
+        state: restarted
+        enabled: true

@@ -1,0 +1,83 @@
+---
+- name: PHP setting
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: epel-release install
+      ansible.builtin.dnf:
+        name: epel-release
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    # httpd 서비스를 이용하기 위해 php와 패키지 설치
+    - name: remi install
+      ansible.builtin.command:
+        cmd: "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm"
+      when: ansible_os_family == "RedHat"
+
+    - name: Package installed (config-manager)
+      ansible.builtin.command:
+        cmd: dnf config-manager --set-enabled crb
+      when: ansible_os_family == "RedHat"
+
+    - name: Package installed (epel-next-release)
+      ansible.builtin.command:
+        cmd: dnf install epel-release epel-next-release -y
+      when: ansible_os_family == "RedHat"
+
+    - name: inxi install
+      ansible.builtin.dnf:
+        name: inxi
+        state: present
+      when: ansible_os_family == "RedHat"
+    
+    - name: PHP 8.4 Version
+      ansible.builtin.command:
+        cmd: dnf -y module install php:remi-8.4
+      when: ansible_os_family == "RedHat"
+
+    - name: remi update and install packages (ex gcc, php-odbc, php-nbstring)
+      ansible.builtin.dnf:
+        name:
+          - libjpeg* 
+          - libpng* 
+          - freetype* 
+          - gd-* 
+          - gcc 
+          - gcc-c++ 
+          - gdbm-devel 
+          - giflib*
+          - php
+          - php-bcmath 
+          - php-cli 
+          - php-common 
+          - php-devel 
+          - php-mbstring 
+          - php-odbc 
+          - php-process 
+          - php-gd 
+          - libpng-devel 
+          - php-gettext 
+          - php-pear 
+          - php-xml 
+          - php-zip 
+          - php-opcache 
+          - php-mysqlnd 
+          - php-fpm 
+          - php*-zip 
+          - php-intl 
+          - php-pdo 
+          - php-bcmath 
+          - libzip-devel 
+          - php-pear 
+          - zlib-devel
+        state: present
+        disablerepo: remi-safe
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Upgrade all packages again
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: yes

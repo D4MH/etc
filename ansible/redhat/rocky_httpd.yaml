@@ -1,0 +1,100 @@
+---
+- name: Rocky9.5 httpd setup
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Install httpd (Rocky9.5)
+      ansible.builtin.dnf:
+        name:
+          - epel-release
+          - httpd
+          - expect
+          - python3
+        state: present
+        update_cache: yes
+
+    # php를 사용하기 위해 remi 및 패키지 설치 과정
+    - name: remi install
+      ansible.builtin.command:
+        cmd: "sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm"
+      when: ansible_os_family == "RedHat"
+
+    - name: Package installed (config-manager)
+      ansible.builtin.command:
+        cmd: dnf config-manager --set-enabled crb
+      when: ansible_os_family == "RedHat"
+
+    - name: Package installed (epel-next-release)
+      ansible.builtin.command:
+        cmd: dnf install epel-release epel-next-release -y
+      when: ansible_os_family == "RedHat"
+
+    - name: inxi install
+      ansible.builtin.dnf:
+        name: inxi
+        state: present
+      when: ansible_os_family == "RedHat"
+    
+    # php 버전을 8.4로 변경
+    - name: PHP 8.4 Version
+      ansible.builtin.command:
+        cmd: dnf -y module install php:remi-8.4
+      when: ansible_os_family == "RedHat"
+
+    - name: remi update and install packages (ex gcc, php-odbc, php-nbstring)
+      ansible.builtin.dnf:
+        name:
+          - libjpeg* 
+          - libpng* 
+          - freetype* 
+          - gd-* 
+          - gcc 
+          - gcc-c++ 
+          - gdbm-devel 
+          - giflib*
+          - php
+          - php-bcmath 
+          - php-cli 
+          - php-common 
+          - php-devel 
+          - php-mbstring 
+          - php-odbc 
+          - php-process 
+          - php-gd 
+          - libpng-devel 
+          - php-gettext 
+          - php-pear 
+          - php-xml 
+          - php-zip 
+          - php-opcache 
+          - php-mysqlnd 
+          - php-fpm 
+          - php*-zip 
+          - php-intl 
+          - php-pdo 
+          - php-bcmath 
+          - libzip-devel 
+          - php-pear 
+          - zlib-devel
+        state: present
+        disablerepo: remi-safe
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Upgrade all packages again
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: yes
+
+    - name: Restart httpd Service
+      ansible.builtin.systemd:
+        name: httpd
+        state: restarted
+      when: ansible_os_family == "RedHat"
+
+    - name: Restart php8.4-fpm Service
+      ansible.builtin.systemd:
+        name: php8.4-fpm
+        state: restarted
+      when: ansible_os_family == "RedHat"

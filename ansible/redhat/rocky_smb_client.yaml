@@ -1,0 +1,21 @@
+---
+- name: Rocky9.5 SMB setup (Client)
+  hosts: all
+  tasks:
+    - name: Install SMB Service (Client)
+      ansible.builtin.dnf:
+        name:
+          - cifs-utils
+          - smbclient
+
+    # SMB 서버에 마운트 할 디렉토리 smb_office 생성
+    - name: Make Directory (SMB)
+      ansible.builtin.file:
+        path: "/home/smb_office"
+        state: directory
+        mode: '0755'
+
+    # SMB 서버에 마운트
+    - name: SMB Mount (Server - Client)
+      ansible.builtin.command:
+        cmd: "mount -t cifs //smb.smt.local/office /home/smb_office -o username='office',password='asd123!@'"
