@@ -1,0 +1,26 @@
+wordpress_users:
+- name: "smt1"
+  username: "smt1"
+  password: "asd123!@"
+  
+#- name: "smt2"
+#  username: "smt2"
+#  password: "asd123!@"
+#- name: "smt3"
+#  username: "smt3"
+#  password: "asd123!@"
+#- name: "smt4"
+#  username: "smt4"
+#  password: "asd123!@"
+
+dvwa_user:
+- name: "dvwa"
+  username: "dvwa"
+  password: "asd123!@"
+
+bwapp_user:
+- name: "bwapp"
+  username: "bwapp"
+  password: "asd123!@"
+
+mount_ip: 172.16.14.101

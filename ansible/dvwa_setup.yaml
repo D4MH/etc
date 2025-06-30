@@ -1,0 +1,170 @@
+---
+- name: DVWA Setting
+  hosts: test
+  gather_facts: yes
+  vars_files:
+    - user.yaml
+  tasks:
+    # DVWA에서 사용할 계정 생성 (Rocky9.5)
+    - name: Useradd dvwa (Rocky9.5)
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        state: present
+      loop: "{{ dvwa_user }}"
+      when: ansible_os_family == "RedHat"
+
+    # DVWA에서 사용할 계정 생성 (Ubuntu24.04)
+    - name: Useradd dvwa (Ubuntu24.04)
+      ansible.builtin.user:
+        name:  "{{ item.username }}"
+        state: present
+        create_home: yes
+      loop: "{{ dvwa_user }}"
+      when: ansible_os_family == "Debian"
+
+    # DVWA-master 경로에 파일이 있는지 채크
+    - name: Check DVWA-master exists
+      stat:
+        path: "/home/dvwa/DVWA-master"
+      register: file_stat
+
+    # DVWA-master 파일을 다운로드 -> ftp를 이용
+    - name: Download FTP DVWA-master
+      ansible.builtin.get_url:
+        url: "ftp://172.16.4.1/webhacking/DVWA-master.zip"
+        dest: "/home/dvwa/DVWA-master.zip"
+      when: 
+        - file_stat.stat.exists == False
+        
+    # 다운로드 받은 파일 압축 해제
+    - name: Unzip DVWA-master file
+      ansible.builtin.unarchive:
+        src: /home/dvwa/DVWA-master.zip
+        dest: /home/dvwa/
+        remote_src: yes
+      
+    # dvwa 디렉토리의 권한 변경
+    - name: Change Modify (dvwa)
+      ansible.builtin.command:
+        cmd: "chmod 755 -R /home/dvwa/"
+
+    - name: Change owner (dvwa)
+      ansible.builtin.command:
+        cmd: "chown apache:apache -R /home/dvwa/"
+      when: ansible_os_family == "RedHat"
+
+    - name: Remove DVWA-master.zip
+      ansible.builtin.file:
+        path: /home/dvwa/DVWA-master.zip
+        state: absent                                     # 파일 삭제
+
+    # VirtualHost 세팅
+    - name: VirturalHost setting (Rocky9.5)
+      ansible.builtin.copy:
+        dest: "/etc/httpd/conf.d/vhost.conf"
+        content: |
+          <VirtualHost *:80>
+              DocumentRoot "/home/dvwa/DVWA-master"
+              # Servername dvwa.smt.it
+              <Directory "/home/dvwa/DVWA-master">
+                  Options Indexes FollowSymLinks
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+          </VirtualHost>
+      when: ansible_os_family == "RedHat"
+
+    - name: VirtualHost setting (Ubuntu24.04)
+      ansible.builtin.copy:
+        dest: "/etc/apache2/sites-available/000-default.conf"
+        content: |
+          <VirtualHost *:80>
+              DocumentRoot "/home/dvwa/DVWA-master"
+              # Servername dvwa.smt.it
+              <Directory "/home/dvwa/DVWA-master">
+                  Options Indexes FollowSymLinks
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+          </VirtualHost>
+      when: ansible_os_family == "Debian"
+
+    # DVWA config.inc 파일내용 변경
+    - name: DVWA Setting
+      ansible.builtin.copy:
+        dest: "/home/dvwa/DVWA-master/config/config.inc.php"
+        content: |
+          <?php
+            $DBMS = 'MySQL';
+
+            $_DVWA = array();
+            $_DVWA[ 'db_server' ]   = '127.0.0.1';
+            $_DVWA[ 'db_database' ] = 'dvwa';
+            $_DVWA[ 'db_user' ]     = 'dvwauser';
+            $_DVWA[ 'db_password' ] = 'asd123!@';
+            $_DVWA[ 'db_port'] = '3306';
+
+            $_DVWA[ 'recaptcha_public_key' ]  = '';
+            $_DVWA[ 'recaptcha_private_key' ] = '';
+
+            $_DVWA[ 'default_security_level' ] = 'impossible';
+
+            $_DVWA[ 'default_phpids_level' ] = 'disabled';
+
+            $_DVWA[ 'default_phpids_verbose' ] = 'false';
+
+            $_DVWA[ 'default_locale' ] = 'en';
+
+            define ("MYSQL", "mysql");
+            define ("SQLITE", "sqlite");
+
+            $_DVWA["SQLI_DB"] = MYSQL;
+            #$_DVWA["SQLI_DB"] = SQLITE;
+            #$_DVWA["SQLITE_DB"] = "sqli.db";
+          ?>
+
+- name: Service httpd & apache2 restart
+  hosts: test
+  become: yes
+  tasks:
+    - name: Service name setting
+      set_fact:
+        apache_service: "{{ 'httpd' if ansible_facts['os_family'] == 'RedHat' else 'apache2' }}"
+
+    - name: Apache Service Restart
+      ansible.builtin.service:
+        name: "{{ apache_service }}"
+        state: restarted
+
+- name: Make Databases
+  hosts: test
+  become: yes
+  gather_facts: yes
+  collections:
+    - community.mysql
+  vars:
+    db_name: dvwa
+    db_user: dvwauser
+    db_password: "asd123!@"
+    ansible_python_interpreter: /usr/anaconda3/bin/python3
+  tasks:
+    # DVWA를 실행하기 위한 DB 생성
+    - name: Create MySQL DB
+      mysql_db:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: "asd123!@"
+
+    # DVWA의 사용자 계정 dvwa에 대한 권한 설정
+    - name: Create MySQL User and Grant Permissions
+      mysql_user:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        state: present
+        host: "%"
+        login_user: root
+        login_password: "asd123!@"
