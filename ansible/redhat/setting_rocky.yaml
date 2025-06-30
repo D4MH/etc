@@ -1,0 +1,105 @@
+---
+- name: Rocky9 서버 초기 설정 자동화
+  hosts: rocky
+  become: yes
+  tasks:
+    - name: 전체 패키지 업데이트
+      ansible.builtin.yum:
+        name: '*'
+        state: latest
+      ignore_errors: yes
+
+    - name: EPEL 저장소 설치
+      yum:
+        name: epel-release
+        state: present
+
+    - name: Remi
+      ansible.builtin.get_url:
+        url: https://rpms.remirepo.net/enterprise/remi-release-9.rpm
+        dest: /tmp/remi-release-9.rpm
+
+    - name: Remi 저장소 rpm 설치
+      yum:
+        name: /tmp/remi-release-9.rpm
+        state: present
+
+    - name: Remi PHP 8.2 모듈 활성화
+      shell: |
+        dnf module reset php -y
+        dnf module enable php:remi-8.2 -y
+
+
+    - name: PHP 8.2 및 주요 모듈 설치
+      yum:
+        name:
+          - php
+          - php-cli
+          - php-fpm
+          - php-mysqlnd
+          - php-xml
+          - php-json
+          - php-common
+          - php-gd
+          - php-mbstring
+          - php-intl
+          - php-zip
+          - php-curl
+        state: present
+
+    - name: Apache, MariaDB, wget, unzip, phpMyAdmin 설치
+      yum:
+        name:
+          - httpd
+          - mariadb-server
+          - mariadb
+          - wget
+          - unzip
+          - phpmyadmin
+        state: present
+
+    - name: SELinux 비활성화
+      command: setenforce 0
+      ignore_errors: yes
+
+    - name: SELinux 영구 설정(permissive로)
+      replace:
+        path: /etc/selinux/config
+        regexp: '^SELINUX=enforcing'
+        replace: 'SELINUX=permissive'
+
+    - name: Firewalld 비활성화 및 중지
+      systemd:
+        name: firewalld
+        state: stopped
+        enabled: no
+
+    - name: openssh-server 설치
+      yum:
+        name: openssh-server
+        state: present
+
+    - name: sshd_config에서 루트 로그인 허용 설정
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin '
+        line: 'PermitRootLogin yes'
+        state: present
+
+    - name: sshd 서비스 활성화 및 재시작
+      systemd:
+        name: sshd
+        state: restarted
+        enabled: yes
+
+    - name: Apache 서비스 활성화 및 재시작
+      systemd:
+        name: httpd
+        state: restarted
+        enabled: yes
+
+    - name: MariaDB 서비스 활성화 및 재시작
+      systemd:
+        name: mariadb
+        state: restarted
+        enabled: yes

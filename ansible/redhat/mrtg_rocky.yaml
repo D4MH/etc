@@ -1,0 +1,140 @@
+---
+- name: Rocky9 서버에 MRTG, SNMP, Apache 설치 및 설정 통합 자동화
+  hosts: rocky
+  become: yes
+  tasks:
+    # EPEL 저장소
+    - name: EPEL 저장소 설치 (MRTG 패키지 제공)
+      yum:
+        name: epel-release
+        state: present
+
+    # MRTG, SNMP, Apache 설치
+    - name: MRTG, SNMP, Apache 관련 패키지 설치
+      yum:
+        name:
+          - mrtg
+          - net-snmp
+          - net-snmp-utils
+          - httpd
+        state: present
+
+    # Apache에 Listen 81 추가 (중복 방지)
+    - name: Add Listen 81 to httpd.conf if not exists
+      lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen 81'
+        line: 'Listen 81'
+        insertafter: '^Listen 80'
+        state: present
+
+    # SNMP 설정
+    - name: SNMP 데몬 설정 파일 복사 (간단 public community 예시)
+      copy:
+        dest: /etc/snmp/snmpd.conf
+        content: |
+          rocommunity public
+          syslocation "RockyLinux"
+          syscontact admin@example.com
+
+    - name: SNMP 데몬 재시작 및 부팅 시 활성화
+      systemd:
+        name: snmpd
+        state: restarted
+        enabled: yes
+
+    # Apache 시작 및 활성화
+    - name: Apache(HTTPD) 서비스 재시작 및 부팅 시 활성화
+      systemd:
+        name: httpd
+        state: restarted
+        enabled: yes
+
+    # MRTG 웹 디렉토리
+    - name: MRTG 웹 디렉토리 생성
+      file:
+        path: /var/www/html/mrtg
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+
+    # cfgmaker 실행 (WorkDir 명시)
+    - name: cfgmaker로 MRTG 설정파일 자동 생성 (첫 실행만)
+      command: >
+        /bin/cfgmaker --output=/etc/mrtg/mrtg.cfg --global "WorkDir: /var/www/html/mrtg" public@localhost
+      args:
+        creates: /etc/mrtg/mrtg.cfg
+
+    # indexmaker 실행 (첫 실행만)
+    - name: indexmaker로 MRTG 인덱스페이지 생성 (첫 실행만)
+      command: >
+        /bin/indexmaker /etc/mrtg/mrtg.cfg > /var/www/html/mrtg/index.html
+      args:
+        creates: /var/www/html/mrtg/index.html
+        warn: false
+
+    # MRTG 3회 실행
+    - name: mrtg 3회 실행 (그래프 최초 생성)
+      command: env LANG=C /usr/bin/mrtg /etc/mrtg/mrtg.cfg
+      with_sequence: count=3
+
+    # 디렉토리 권한
+    - name: MRTG 디렉토리 권한, 소유자(apache) 재설정
+      file:
+        path: /var/www/html/mrtg
+        owner: apache
+        group: apache
+        mode: '0755'
+        recurse: yes
+
+    # Apache VirtualHost (포트 81 예시)
+    - name: Add Apache VirtualHost for mrtg (포트 81)
+      copy:
+        dest: /etc/httpd/conf.d/mrtg.conf
+        content: |
+          <VirtualHost *:81>
+              ServerName mrtg.smt.it
+              DocumentRoot "/var/www/html/mrtg"
+              <Directory "/var/www/html/mrtg">
+                  Options Indexes FollowSymLinks
+                  AllowOverride None
+                  Require all granted
+              </Directory>
+          </VirtualHost>
+
+    # SELinux context 적용 (웹 폴더)
+    - name: SELinux context 적용 (MRTG 폴더)
+      command: restorecon -Rv /var/www/html/mrtg
+      ignore_errors: yes
+
+    - name: Set SELinux boolean for httpd (httpd가 사용자 파일 읽을 수 있게)
+      command: setsebool -P httpd_read_user_content 1
+      ignore_errors: yes
+
+    # 방화벽 예외 추가 (HTTP 80/81, SNMP 161/UDP)
+    - name: 80, 81포트 방화벽 오픈 (http, https는 서비스명, 81은 직접 추가)
+      firewalld:
+        port: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop:
+        - 80/tcp
+        - 81/tcp
+        - 161/udp
+      ignore_errors: yes
+
+    # Crontab 등록 (5분마다 mrtg 실행, 로그 기록)
+    - name: 5분마다 MRTG 실행 (crontab)
+      cron:
+        name: "create mrtg log"
+        minute: "*/5"
+        job: "env LANG=C /usr/bin/mrtg /etc/mrtg/mrtg.cfg --logging /var/log/mrtg/mrtg.log"
+
+    # Apache 재시작 (VirtualHost 적용)
+    - name: Apache(HTTPD) 서비스 재시작
+      systemd:
+        name: httpd
+        state: restarted
+        enabled: yes

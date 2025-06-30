@@ -1,0 +1,73 @@
+---
+- name: Install WordPress on Rocky9
+  hosts: rocky
+  become: yes
+  vars:
+    wp_root: "/var/www/wordpress"
+  tasks:
+    - name: Install Apache, PHP, MariaDB, wget, unzip
+      yum:
+        name:
+          - httpd
+          - mariadb-server
+          - php
+          - php-mysqlnd
+          - php-gd
+          - php-xml
+          - php-mbstring
+          - wget
+          - unzip
+        state: present
+
+    - name: Start and enable httpd/mariadb
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - httpd
+        - mariadb
+
+    - name: Download WordPress
+      get_url:
+        url: https://ko.wordpress.org/latest-ko_KR.zip
+        dest: /tmp/wordpress.zip
+
+    - name: Unarchive WordPress
+      unarchive:
+        src: /tmp/wordpress.zip
+        dest: /var/www/
+        remote_src: yes
+        owner: apache
+        group: apache
+
+    - name: Set permissions
+      file:
+        path: "{{ wp_root }}"
+        owner: apache
+        group: apache
+        recurse: yes
+
+    - name: Add VirtualHost for WordPress
+      blockinfile:
+        path: /etc/httpd/conf/httpd.conf
+        block: |
+          <VirtualHost *:80>
+              ServerName www.d6.com
+              DocumentRoot {{ wp_root }}
+              <Directory {{ wp_root }}>
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+              ErrorLog /var/log/httpd/wp_error.log
+              CustomLog /var/log/httpd/wp_access.log combined
+          </VirtualHost>
+        marker: "# {mark} ANSIBLE WP VHOST"
+        insertafter: EOF
+
+    - name: Reload httpd
+      service:
+        name: httpd
+        state: reloaded
+
+        

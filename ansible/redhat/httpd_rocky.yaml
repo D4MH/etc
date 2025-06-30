@@ -1,0 +1,35 @@
+---
+- name: Install httpd on Rocky
+  hosts: Rocky
+  become: yes
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Check os_family
+      debug:
+        var: ansible_facts['os_family']
+
+    - name: Install httpd on Rocky
+      ansible.builtin.yum:
+        name: httpd
+        state: present
+      when: "'RedHat' in ansible_facts['os_family'] or 'Rocky' in ansible_facts['os_family']"
+
+    - name: Start and enable httpd
+      ansible.builtin.service:
+        name: httpd
+        state: started
+        enabled: yes
+      when: "'RedHat' in ansible_facts['os_family'] or 'Rocky' in ansible_facts['os_family']"
+
+    - name: Print httpd status
+      command: systemctl status httpd
+      register: apache_status
+      ignore_errors: yes
+      failed_when: false
+      when: "'RedHat' in ansible_facts['os_family'] or 'Rocky' in ansible_facts['os_family']"
+
+    - name: Show Apache status output
+      debug:
+        var: apache_status.stdout_lines

@@ -1,0 +1,109 @@
+---
+- name: Install DVWA on Rocky9
+  hosts: rocky
+  become: yes
+  vars:
+    dvwa_root: "/var/www/dvwa"
+  tasks:
+    - name: Install git
+      yum:
+        name:
+          - git
+        state: present
+
+    - name: Start and enable httpd/mariadb
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - httpd
+        - mariadb
+
+    # DVWA에서 사용할 계정 생성
+    - name: Useradd dvwa
+      ansible.builtin.user:
+        name: dvwa
+        state: present
+      when: ansible_os_family == "RedHat"
+
+
+  #  - name: Clone DVWA
+   #   git:
+    #    repo: 'https://github.com/digininja/DVWA.git'
+     #   dest: "{{ dvwa_root }}"
+      #  force: yes
+
+    - name: Set permissions
+      file:
+        path: "{{ dvwa_root }}"
+        owner: apache
+        group: apache
+        recurse: yes
+
+    - name: Add VirtualHost for DVWA
+      blockinfile:
+        path: /etc/httpd/conf/httpd.conf
+        block: |
+          <VirtualHost *:80>
+              ServerName dvwa.local
+              DocumentRoot {{ dvwa_root }}
+              <Directory {{ dvwa_root }}>
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+              ErrorLog /var/log/httpd/dvwa_error.log
+              CustomLog /var/log/httpd/dvwa_access.log combined
+          </VirtualHost>
+        marker: "# {mark} ANSIBLE DVWA VHOST"
+        insertafter: EOF
+
+    # dvwa 디렉토리의 권한 변경
+    - name: Change Modify (dvwa)
+      ansible.builtin.command:
+        cmd: "chmod 755 -R /var/www/dvwa"
+
+    - name: Change owner (dvwa)
+      ansible.builtin.command:
+        cmd: "chown apache:apache -R /var/www/dvwa"
+      when: ansible_os_family == "RedHat"
+
+    - name: DVWA Setting
+      ansible.builtin.copy:
+        dest: "/var/www/dvwa/config/config.inc.php"
+        content: |
+          <?php
+            $DBMS = 'MySQL';
+
+            $_DVWA = array();
+            $_DVWA[ 'db_server' ]   = '127.0.0.1';
+            $_DVWA[ 'db_database' ] = 'dvwa';
+            $_DVWA[ 'db_user' ]     = 'dvwauser';
+            $_DVWA[ 'db_password' ] = 'asd123!@';
+            $_DVWA[ 'db_port'] = '3306';
+
+            $_DVWA[ 'recaptcha_public_key' ]  = '';
+            $_DVWA[ 'recaptcha_private_key' ] = '';
+
+            $_DVWA[ 'default_security_level' ] = 'impossible';
+
+            $_DVWA[ 'default_phpids_level' ] = 'disabled';
+
+            $_DVWA[ 'default_phpids_verbose' ] = 'false';
+
+            $_DVWA[ 'default_locale' ] = 'en';
+
+            define ("MYSQL", "mysql");
+            define ("SQLITE", "sqlite");
+
+            $_DVWA["SQLI_DB"] = MYSQL;
+            #$_DVWA["SQLI_DB"] = SQLITE;
+            #$_DVWA["SQLITE_DB"] = "sqli.db";
+          ?>
+
+
+    - name: Reload httpd
+      service:
+        name: httpd
+        state: reloaded
+

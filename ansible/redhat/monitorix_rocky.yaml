@@ -1,0 +1,72 @@
+---
+- name: Install Monitorix and dependencies on Rocky Linux
+  hosts: rocky
+  become: yes
+
+  tasks:
+    - name: Install EPEL repository
+      yum:
+        name: epel-release
+        state: present
+
+    - name: Install Monitorix and all required dependencies
+      yum:
+        name:
+          - monitorix
+          - perl
+          - perl-Config-General
+          - perl-FindBin
+          - perl-IO-Socket-SSL
+          - perl-libwww-perl
+          - perl-CGI
+          - perl-Time-HiRes
+          - perl-File-Which
+          - rrdtool-perl
+          - perl-HTTP-Server-Simple
+          - perl-CPAN
+        state: present
+
+#    - name: Install HTTP::Server::Simple::CGI via CPAN
+#      command: cpan -i HTTP::Server::Simple::CGI
+#      args:
+#        creates: /usr/local/share/perl5/HTTP/Server/Simple/CGI.pm
+
+    - name: Ensure Monitorix config allows external access
+      lineinfile:
+        path: /etc/monitorix/monitorix.conf
+        regexp: '^(\s*)host\s*='
+        line: '        host = 0.0.0.0'
+        backrefs: yes
+
+    - name: Ensure Monitorix config sets enabled = y
+      replace:
+        path: /etc/monitorix/monitorix.conf
+        regexp: 'enabled\s*=\s*n'
+        replace: 'enabled = y'
+
+    - name: Ensure Monitorix is listening on port 8080
+      lineinfile:
+        path: /etc/monitorix/monitorix.conf
+        regexp: '^(\s*)port\s*='
+        line: '        port = 8090'
+        backrefs: yes
+
+    - name: Start and enable Monitorix service
+      systemd:
+        name: monitorix
+        enabled: yes
+        state: restarted
+
+    - name: Open port 8090/tcp in firewall (if running)
+      firewalld:
+        port: 8090/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+      ignore_errors: yes
+
+    - name: Reload firewalld (if running)
+      service:
+        name: firewalld
+        state: reloaded
+      ignore_errors: yes

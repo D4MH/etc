@@ -1,0 +1,74 @@
+---
+- name: Rocky Linux 9.5 WebGoat 설치 자동화
+  hosts: rocky
+  become: yes
+  vars:
+    webgoat_dir: "/opt/webgoat"
+    webgoat_user: "webgoat"
+    java_pkg: "java-21-openjdk"
+  tasks:
+    - name: 자바 21 설치
+      dnf:
+        name: "{{ java_pkg }}"
+        state: present
+        update_cache: yes
+
+    - name: WebGoat 실행용 사용자 생성
+      user:
+        name: "{{ webgoat_user }}"
+        system: yes
+        shell: /sbin/nologin
+        home: "{{ webgoat_dir }}"
+        create_home: no
+
+    - name: WebGoat 디렉터리 생성
+      file:
+        path: "{{ webgoat_dir }}"
+        state: directory
+        owner: "{{ webgoat_user }}"
+        group: "{{ webgoat_user }}"
+        mode: '0755'
+
+    - name: WebGoat JAR 다운로드
+      get_url:
+        url: "https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar"
+        dest: "{{ webgoat_dir }}/webgoat.jar"
+        owner: "{{ webgoat_user }}"
+        group: "{{ webgoat_user }}"
+        mode: '0755'
+
+    - name: systemd 서비스 파일 생성 (webgoat.service)
+      copy:
+        dest: /etc/systemd/system/webgoat.service
+        content: |
+          [Unit]
+          Description=WebGoat Java Application
+          After=network.target
+
+          [Service]
+          Type=simple
+          User={{ webgoat_user }}
+          WorkingDirectory={{ webgoat_dir }}
+          ExecStart=/usr/bin/java -jar {{ webgoat_dir }}/webgoat.jar --server.port=8080 --server.address=0.0.0.0
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: systemd 데몬 리로드
+      systemd:
+        daemon_reload: yes
+
+    - name: WebGoat 서비스 활성화 및 시작
+      systemd:
+        name: webgoat
+        state: started
+        enabled: yes
+
+    - name: 8080 포트 방화벽 허용 (firewalld)
+      firewalld:
+        port: 8080/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+      when: "'firewalld' in ansible_facts.packages"
