@@ -1,0 +1,43 @@
+---
+- name: Cisco Dev Recovery sh run
+  hosts: cisco_Dev
+  connection: ansible.netcommon.network_cli
+  gather_facts: no
+  vars:
+    db_user: root
+    db_pass: asd123!@
+    db_host: 172.16.0.121
+    db_name: Network
+
+  tasks:
+    - name: Get device_id(FK) from device table
+      community.mysql.mysql_query:
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_pass }}"
+        login_host: "{{ db_host }}"
+        login_db: "{{ db_name }}"
+        query: SELECT id FROM device WHERE dev_name = '{{ inventory_hostname }}'
+      register: fk
+
+    - name: Get backup data from backup table
+      community.mysql.mysql_query:
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_pass }}"
+        login_host: "{{ db_host }}"
+        login_db: "{{ db_name }}"
+        query: SELECT backup_data FROM backup WHERE device_id = "{{fk.query_result[0][0].id}}" 
+      register: run
+
+    - name: Fail if no backup data
+      fail:
+        msg: "{{ inventory_hostname }} 장비에 백업 데이터가 없습니다."
+      when: run.query_result[0][0].backup_data | length == 0
+  
+#    - name: Display sh run
+#      debug:
+#        var: run.query_result[0][0].backup_data
+
+    - name: Restore config to device
+      cisco.ios.ios_config:
+        lines: "{{ run.query_result[0][0]['backup_data']('\n') }}"
+

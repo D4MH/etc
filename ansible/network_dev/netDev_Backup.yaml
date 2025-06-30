@@ -1,0 +1,52 @@
+---
+- name: Cisco Dev Save Backup
+  hosts: cisco_Dev
+  connection: ansible.netcommon.network_cli
+  gather_facts: no
+  vars:
+    db_user: root
+    db_pass: asd123!@
+    db_host: 172.16.0.121
+    db_name: Network
+
+  tasks:
+    - name: Show Running-config
+      cisco.ios.ios_command:
+        commands:
+          - sh run
+#        timeout: 60
+      register: run
+
+    - name: Get device_id(FK) from device table
+      community.mysql.mysql_query:
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_pass }}"
+        login_host: "{{ db_host }}"
+        login_db: "{{ db_name }}"
+        query: SELECT id FROM device WHERE dev_name = '{{ inventory_hostname }}'
+      register: fk
+
+    - name: Display backup table's FK
+      debug:
+        var: fk.query_result[0][0].id
+
+    - name: Insert values NetDev sh run
+      community.mysql.mysql_query:
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_pass }}"
+        login_host: "{{ db_host }}"
+        login_db: "{{ db_name }}"
+        query: INSERT INTO backup(device_id, backup_data) VALUES (%s, %s)
+        positional_args:
+          - "{{ fk.query_result[0][0].id }}"
+          - "{{ run.stdout[0] }}"
+
+#    - name: Display sh run
+#      debug:
+#        var: run.stdout_lines
+#
+#    - name: Save result
+#      copy:
+#        content:
+#          "{{ run.stdout[0] }}"
+#        dest: "./shrun.db"
