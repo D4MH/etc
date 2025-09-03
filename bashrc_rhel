@@ -1,0 +1,32 @@
+# \e[0;32m
+
+#; 앞의 숫자는 글자 형식
+#0 : Normal
+#1 : Bold
+#2 : Dim
+#4 : Underlined﻿
+
+#; 뒤의 숫자는 색상
+﻿#30 – Black
+#31 – Red
+#32 – Green
+#33 – Brown
+#34 – Blue
+#35 – Purple
+#36 – Cyan
+#37 – Light gray﻿
+
+# some more ls aliases
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+alias s1='systemctl start'
+alias s2='systemctl status'
+alias s3='systemctl stop'
+alias s4='systemctl enable'
+alias s5='systemctl disable'
+alias sr='systemctl restart'
+alias sd='systemctl daemon-reload'
+
+PS1='\e[0;31m\u\e[0m@\e[0;37m\h\e[0m:\e[36m\w\e[0m\$ '
