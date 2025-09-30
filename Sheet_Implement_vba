@@ -1,0 +1,40 @@
+Sub CreateWeekdaySheets()
+    Dim ws As Worksheet
+    Dim newWs As Worksheet
+    Dim dateCell As Range
+    Dim baseDate As Date
+    Dim newDate As Date
+    Dim lastDay As Date
+    Dim i As Integer
+    
+    ' 기준 시트 이름 지정 (예: "9월 29일")
+    Set ws = ThisWorkbook.Sheets("9월 29일")
+    
+    ' 기준 날짜가 들어 있는 셀 (예: B5)
+    Set dateCell = ws.Range("B5")
+    baseDate = dateCell.Value
+    
+    ' 이번 달의 마지막 날짜 계산
+    lastDay = WorksheetFunction.EoMonth(baseDate, 0) ' 이번 달 마지막 날
+    
+    ' 하루씩 반복
+    For i = 1 To (lastDay - baseDate)
+        newDate = baseDate + i
+        
+        ' 평일만 생성 (월=2 ~ 금=6)
+        If Weekday(newDate, vbSunday) >= 2 And Weekday(newDate, vbSunday) <= 6 Then
+            ' 시트 복사
+            ws.Copy After:=Sheets(Sheets.Count)
+            Set newWs = ActiveSheet
+            
+            ' 시트 이름 (예: "10월 1일")
+            newWs.Name = Format(newDate, "m월 d일")
+            
+            ' 날짜 셀 값 변경
+            newWs.Range("B5").Value = newDate
+            newWs.Range("B5").NumberFormat = "yyyy-mm-dd"
+        End If
+    Next i
+    
+    MsgBox "평일 시트 생성 완료"
+End Sub
